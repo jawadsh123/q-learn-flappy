@@ -14,6 +14,7 @@ SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 OBSERVE = 100000
 timestep = 0
+MAX_SCORE = 0
 # amount by which base can maximum shift to left
 PIPEGAPSIZE  = 100  # gap between upper and lower part of pipe
 BASEY        = SCREENHEIGHT * 0.79
@@ -22,12 +23,6 @@ IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
-	# red bird
-	(
-		'assets/sprites/redbird-upflap.png',
-		'assets/sprites/redbird-midflap.png',
-		'assets/sprites/redbird-downflap.png',
-	),
 	# blue bird
 	(
 		# amount by which base can maximum shift to left
@@ -35,35 +30,41 @@ PLAYERS_LIST = (
 		'assets/sprites/bluebird-midflap.png',
 		'assets/sprites/bluebird-downflap.png',
 	),
-	# yellow bird
-	(
-		'assets/sprites/yellowbird-upflap.png',
-		'assets/sprites/yellowbird-midflap.png',
-		'assets/sprites/yellowbird-downflap.png',
-	),
+	# # red bird
+	# (
+	# 	'assets/sprites/redbird-upflap.png',
+	# 	'assets/sprites/redbird-midflap.png',
+	# 	'assets/sprites/redbird-downflap.png',
+	# ),
+	# # yellow bird
+	# (
+	# 	'assets/sprites/yellowbird-upflap.png',
+	# 	'assets/sprites/yellowbird-midflap.png',
+	# 	'assets/sprites/yellowbird-downflap.png',
+	# ),
 )
 
 # list of backgrounds
 BACKGROUNDS_LIST = (
 	'assets/sprites/background-day.png',
-	'assets/sprites/background-night.png',
+	# 'assets/sprites/background-night.png',
 )
 
 # list of pipes
 PIPES_LIST = (
 	'assets/sprites/pipe-green.png',
-	'assets/sprites/pipe-red.png',
+	# 'assets/sprites/pipe-red.png',
 )
 
 def main():
-	global SCREEN, FPSCLOCK, timestep
+	global SCREEN, FPSCLOCK, timestep, MAX_SCORE
 	pygame.init()
 
-	AI.loadTable()
+	timestep, MAX_SCORE = AI.loadTable()
 
 	FPSCLOCK = pygame.time.Clock()
 	SCREEN = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
-	pygame.display.set_caption('Flappy Bird')
+	pygame.display.set_caption(AI.AI_NAME)
 
 	# numbers sprites for score display
 	IMAGES['numbers'] = (
@@ -135,7 +136,7 @@ def main():
 
 		movementInfo = showWelcomeAnimation()
 		crashInfo = mainGame(movementInfo)
-		AI.updatePenalty()
+		# AI.updatePenalty()
 		# showGameOverScreen(crashInfo)
 
 
@@ -164,7 +165,7 @@ def showWelcomeAnimation():
 		for event in pygame.event.get():
 			if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
 				pygame.quit()
-				AI.saveTable()
+				AI.saveTable(timestep, MAX_SCORE)
 				sys.exit()
 			if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
 				# make first flap sound and return values for mainGame
@@ -201,7 +202,7 @@ def showWelcomeAnimation():
 
 def mainGame(movementInfo):
 
-	global timestep	
+	global timestep, MAX_SCORE
 
 	score = playerIndex = loopIter = 0
 	playerIndexGen = movementInfo['playerIndexGen']
@@ -245,21 +246,6 @@ def mainGame(movementInfo):
 
 	while True:
 
-		# timestep += 1 
-		# arbitraryNumber += 1
-		# if arbitraryNumber%15 == 0:
-
-		# 	if lowerPipes[0]['x'] > playerx:
-		# 		pipeNum = 0
-		# 	else:
-		# 		pipeNum = 1
-
-		# 	x_distance = lowerPipes[pipeNum]['x'] - playerx
-		# 	y_distance = lowerPipes[pipeNum]['y'] - playery
-
-		# 	print(x_distance, y_distance)
-
-		# 	arbitraryNumber = arbitraryNumber%30
 
 		timestep += 1
 
@@ -276,8 +262,12 @@ def mainGame(movementInfo):
 		else:
 			side = 'lowerside'
 
-		action = AI.actionSelect(x_distance, y_distance, side)
+		action = 'do_nothing'
+		if timestep%7 == 0:
+			action = AI.actionSelect(x_distance, y_distance, side)
 		
+
+
 		if action == 'flap':
 			if playery > -2 * IMAGES['player'][0].get_height():
 					playerVelY = playerFlapAcc
@@ -289,7 +279,7 @@ def mainGame(movementInfo):
 		for event in pygame.event.get():
 			if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
 				pygame.quit()
-				AI.saveTable()
+				AI.saveTable(timestep, MAX_SCORE)
 				sys.exit()
 			if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
 				if playery > -2 * IMAGES['player'][0].get_height():
@@ -301,6 +291,7 @@ def mainGame(movementInfo):
 		crashTest = checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
 							   upperPipes, lowerPipes)
 		if crashTest[0]:
+			AI.penalize(timestep)
 			return {
 				'y': playery,
 				'groundCrash': crashTest[1],
@@ -310,16 +301,18 @@ def mainGame(movementInfo):
 				'score': score,
 				'playerVelY': playerVelY,
 			}
+		else:
+			AI.reward()
 
 
-		AI.backtrackRewards(x_distance, y_distance, side, action)
+		# AI.backtrackRewards(x_distance, y_distance, side, action)
 
 		if timestep > OBSERVE:
 			AI.updateEpsilon()
-			AI.train()
+			# AI.train()
 
 		if timestep%10000 == 0:
-			AI.saveTable()
+			AI.saveTable(timestep, MAX_SCORE)
 
 
 
@@ -329,7 +322,10 @@ def mainGame(movementInfo):
 			pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
 			if pipeMidPos <= playerMidPos < pipeMidPos + 4:
 				score += 1
-				AI.updateRewards()
+				if score > MAX_SCORE:
+					MAX_SCORE = score
+				AI.reward(heavy=True)
+				# AI.updateRewards()
 				# SOUNDS['point'].play()
 
 
@@ -373,6 +369,7 @@ def mainGame(movementInfo):
 		SCREEN.blit(IMAGES['base'], (basex, BASEY))
 		# print score so player overlaps the score
 		showScore(score)
+		showMaxScore(MAX_SCORE)
 		SCREEN.blit(IMAGES['player'][playerIndex], (playerx, playery))
 
 		pygame.display.update()
@@ -381,6 +378,8 @@ def mainGame(movementInfo):
 
 def showGameOverScreen(crashInfo):
 	"""crashes the player down ans shows gameover image"""
+	global MAX_SCORE
+
 	score = crashInfo['score']
 	playerx = SCREENWIDTH * 0.2
 	playery = crashInfo['y']
@@ -423,6 +422,7 @@ def showGameOverScreen(crashInfo):
 
 		SCREEN.blit(IMAGES['base'], (basex, BASEY))
 		showScore(score)
+		showMaxScore(MAX_SCORE)
 		SCREEN.blit(IMAGES['player'][1], (playerx,playery))
 
 		FPSCLOCK.tick(FPS)
@@ -467,6 +467,20 @@ def showScore(score):
 	for digit in scoreDigits:
 		SCREEN.blit(IMAGES['numbers'][digit], (Xoffset, SCREENHEIGHT * 0.1))
 		Xoffset += IMAGES['numbers'][digit].get_width()
+
+def showMaxScore(score):
+	"""displalys max score till now"""
+	scoreDigits = [int(x) for x in list(str(score))]
+	totalWidth = 0 # total width of all numbers to be printed
+
+	for digit in scoreDigits:
+		totalWidth += IMAGES['numbers'][digit].get_width()
+
+	Xoffset = (SCREENWIDTH - totalWidth) / 2
+
+	for digit in scoreDigits:
+		SCREEN.blit(IMAGES['numbers'][digit], (Xoffset, SCREENHEIGHT * 0.9))
+		Xoffset += IMAGES['numbers'][digit].get_width()	
 
 
 def checkCrash(player, upperPipes, lowerPipes):
