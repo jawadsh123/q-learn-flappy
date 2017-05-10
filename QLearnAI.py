@@ -12,17 +12,18 @@ FINAL_EPSILON = 0.0001
 EPSILON = INITIAL_EPSILON
 EXPLORE = 2000000
 LAMBDA = 1
-ALPHA = 0.7
+ALPHA = 0.6
 REWARD = 1
-PENALTY = -1000
+PENALTY = -10
 MEMORY_LENGTH = 50000
 REWARD_MEMORY_LENGTH = 4
 PENALTY_MEMORY_LENGTH = 1
-RESOLUTION = 20
+RESOLUTION = 10
 
 # update AI or new AI
-NEW_AI = False
-AI_NAME = 'high_penalty_heavy_rewarding'
+NEW_AI = True
+# AI_NAME = 'normal_penalty_heavy_rewarding_rapid_decision'
+AI_NAME = 'testing'
 
 
 
@@ -42,17 +43,16 @@ def actionSelect(x_distance, y_distance, side):
 
 	up = new_state['flap']
 	down = new_state['do_nothing']
-	if up == down:
+	randNum = random.random()
+	if randNum < EPSILON:
+		action = randomSelect()
+	elif up == down:
 		action = 'do_nothing'
 	else:
-		randNum = random.random()
-		if randNum < EPSILON:
-			action = randomSelect()
+		if up > down:
+			action = 'flap'
 		else:
-			if up > down:
-				action = 'flap'
-			else:
-				action = 'do_nothing'
+			action = 'do_nothing'
 
 	reward_memory.append({'x':x_distance, 'y':y_distance, 's':side, 'a':action})
 
@@ -89,9 +89,9 @@ def reward(heavy=False):
 		if not heavy:
 			curr_reward = REWARD
 		else:
-			curr_reward = REWARD * 100
+			curr_reward = REWARD * 1000
 
-		q_table[from_s][from_y][from_x][from_a] = q_table[from_s][from_y][from_x][from_a] + ALPHA*(curr_reward + LAMBDA*(max(q_table[to_s][to_y][to_x]['flap'], q_table[to_s][to_x][to_y]['do_nothing'])) - q_table[from_s][from_y][from_x][from_a] )
+		q_table[from_s][from_y][from_x][from_a] = q_table[from_s][from_y][from_x][from_a] + ALPHA*(curr_reward + LAMBDA*(max(q_table[to_s][to_y][to_x]['flap'], q_table[to_s][to_y][to_x]['do_nothing'])) - q_table[from_s][from_y][from_x][from_a] )
 
 def penalize(timestep):
 
@@ -107,9 +107,9 @@ def penalize(timestep):
 		to_y = to_state['y']
 		to_s = to_state['s']
 
-		q_table[from_s][from_y][from_x][from_a] = q_table[from_s][from_y][from_x][from_a] + ALPHA*(PENALTY + LAMBDA*(max(q_table[to_s][to_y][to_x]['flap'], q_table[to_s][to_x][to_y]['do_nothing'])) - q_table[from_s][from_y][from_x][from_a] )
+		q_table[from_s][from_y][from_x][from_a] = q_table[from_s][from_y][from_x][from_a] + ALPHA*(PENALTY + LAMBDA*(max(q_table[to_s][to_y][to_x]['flap'], q_table[to_s][to_y][to_x]['do_nothing'])) - q_table[from_s][from_y][from_x][from_a] )
 
-		print("Dying State {}".format(from_state))
+		print("Dying State {}".format(to_state))
 		print("Values {}, TimeStep {}".format(q_table[from_s][from_y][from_x], timestep))
 	
 

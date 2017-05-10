@@ -5,21 +5,26 @@ import pyautogui
 import pygame
 import math
 from pygame.locals import *
-import QLearnAI as AI
+import QLearnAI_WithSpeed as AI
+# import QLearnAI as AI
 
 
 
-FPS = 30
+FPS = 1000000
+# FPS = 30
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 OBSERVE = 100000
 timestep = 0
 MAX_SCORE = 0
+PIPE_NUMBER = 0
 # amount by which base can maximum shift to left
 PIPEGAPSIZE  = 100  # gap between upper and lower part of pipe
 BASEY        = SCREENHEIGHT * 0.79
 # image, sound and hitmask  dicts
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
+ACTION_INTERVAL = 1
+SAVE_RATE = 50000
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -202,7 +207,7 @@ def showWelcomeAnimation():
 
 def mainGame(movementInfo):
 
-	global timestep, MAX_SCORE
+	global timestep, MAX_SCORE, ACTION_INTERVAL, SAVE_RATE
 
 	score = playerIndex = loopIter = 0
 	playerIndexGen = movementInfo['playerIndexGen']
@@ -263,8 +268,8 @@ def mainGame(movementInfo):
 			side = 'lowerside'
 
 		action = 'do_nothing'
-		if timestep%7 == 0:
-			action = AI.actionSelect(x_distance, y_distance, side)
+		if timestep%ACTION_INTERVAL == 0:
+			action = AI.actionSelect(x_distance, y_distance, side, playerVelY)
 		
 
 
@@ -311,7 +316,7 @@ def mainGame(movementInfo):
 			AI.updateEpsilon()
 			# AI.train()
 
-		if timestep%10000 == 0:
+		if timestep % SAVE_RATE == 0:
 			AI.saveTable(timestep, MAX_SCORE)
 
 
@@ -443,8 +448,21 @@ def playerShm(playerShm):
 def getRandomPipe():
 	"""returns a randomly generated pipe"""
 	# y of gap between upper and lower pipe
+	
 	gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
 	gapY += int(BASEY * 0.2)
+
+	# global PIPE_NUMBER
+
+	# if PIPE_NUMBER % 2 == 0:
+	# 	gapY = 0
+	# else:
+	# 	gapY = int(BASEY * 0.6 - PIPEGAPSIZE)
+	# gapY += int(BASEY * 0.2)
+	# PIPE_NUMBER += 1
+
+
+
 	pipeHeight = IMAGES['pipe'][0].get_height()
 	pipeX = SCREENWIDTH + 10
 
